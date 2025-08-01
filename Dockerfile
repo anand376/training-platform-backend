@@ -11,17 +11,17 @@ RUN a2enmod rewrite
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy composer before app for caching
-COPY composer.lock composer.json /var/www/html/
+# Copy composer before app for layer caching (only lock + json)
+COPY composer.lock composer.json ./
 
 # Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Install PHP dependencies
-RUN composer install --no-dev --optimize-autoloader
+# Copy full application source
+COPY . .
 
-# Copy application source
-COPY . /var/www/html
+# Install PHP dependencies (after source is copied so artisan exists)
+RUN composer install --no-dev --optimize-autoloader
 
 # Laravel setup
 RUN cp .env.example .env && \
@@ -30,14 +30,14 @@ RUN cp .env.example .env && \
     php artisan route:cache && \
     php artisan view:cache
 
-# Permissions
+# Fix permissions
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html
 
-# Apache config: change DocumentRoot
+# Update Apache DocumentRoot to /public
 RUN sed -i 's|DocumentRoot /var/www/html|DocumentRoot /var/www/html/public|g' /etc/apache2/sites-available/000-default.conf
 
-# Expose port 80
+# Expose port
 EXPOSE 80
 
 # Start Apache
