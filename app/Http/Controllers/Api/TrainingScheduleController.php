@@ -13,8 +13,14 @@ class TrainingScheduleController extends Controller
     public function index()
     {
         try {
-            // Eager load related Course
             $schedules = TrainingSchedule::with('course')->get();
+
+            // Add course_name to each schedule
+            $schedules->transform(function ($schedule) {
+                $schedule->course_name = $schedule->course ? $schedule->course->name : null;
+                return $schedule;
+            });
+
             return response()->json($schedules);
         } catch (Exception $e) {
             return response()->json([
@@ -35,6 +41,8 @@ class TrainingScheduleController extends Controller
             ]);
 
             $schedule = TrainingSchedule::create($data);
+            $schedule->load('course');
+            $schedule->course_name = $schedule->course ? $schedule->course->name : null;
 
             return response()->json($schedule, 201);
         } catch (ValidationException $e) {
@@ -58,6 +66,8 @@ class TrainingScheduleController extends Controller
             if (!$schedule) {
                 return response()->json(['message' => 'Training Schedule not found'], 404);
             }
+
+            $schedule->course_name = $schedule->course ? $schedule->course->name : null;
 
             return response()->json($schedule);
         } catch (Exception $e) {
@@ -84,7 +94,6 @@ class TrainingScheduleController extends Controller
                 'location' => 'nullable|string|max:255',
             ]);
 
-            // Validate date logic carefully especially if only one date is provided
             $startDate = $data['start_date'] ?? $schedule->start_date;
             $endDate = $data['end_date'] ?? $schedule->end_date;
 
@@ -93,6 +102,8 @@ class TrainingScheduleController extends Controller
             }
 
             $schedule->update($data);
+            $schedule->load('course');
+            $schedule->course_name = $schedule->course ? $schedule->course->name : null;
 
             return response()->json($schedule);
         } catch (ValidationException $e) {
